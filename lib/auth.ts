@@ -13,12 +13,17 @@ export interface User {
 }
 
 export async function authenticate(username: string, password: string): Promise<User | null> {
+  console.log('Attempting authentication for:', username);
   const officer = db.getOfficerByUsername(username);
   
+  console.log('Officer found:', officer ? 'Yes' : 'No');
+  
   if (!officer || officer.password !== password) {
+    console.log('Authentication failed - invalid credentials');
     return null;
   }
 
+  console.log('Authentication successful for:', officer.name);
   return {
     id: officer.id,
     username: officer.username,

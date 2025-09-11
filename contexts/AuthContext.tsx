@@ -42,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
+      console.log('AuthContext: Attempting login for:', username);
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -50,11 +51,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ username, password }),
       });
 
+      console.log('AuthContext: Login response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('AuthContext: Login successful, user:', data.user?.name);
         setUser(data.user);
         return true;
       }
+      
+      const errorData = await response.json();
+      console.log('AuthContext: Login failed:', errorData);
       return false;
     } catch (error) {
       console.error('Login failed:', error);
