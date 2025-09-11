@@ -1,49 +1,38 @@
-import { createPrivateKey, createPublicKey } from 'crypto';
+import { createPrivateKey, createPublicKey, generateKeyPairSync, KeyObject } from 'crypto';
 
-// Simple RSA key pair for development (DO NOT use in production)
-const DEV_RSA_PRIVATE = process.env.JWT_PRIVATE_KEY_PEM || `-----BEGIN RSA PRIVATE KEY-----
-MIIEowIBAAKCAQEAqQm6eQW0x0Ww3lKk8lZQm0H1Vv0i7c6j6J5lVQYw0M5yH5p3
-LRhCqz8kqZC2w7u5zq5QvOe2f9D3G2a5IhjZf2m8Q4E1Sg9p7x4c1qg8I7G9v3d2
-VZk0C7b7o0E8E2k5ZJYQ1C2iLwJ3v+F7U5QZt7dC8eJfJH5yB4t8z5uU6aV5n+7C
-H3Z9m5m6R8V2m6V6pG0l9h0o3m2k7n5l6m7n8o9p0q1r2s3t4u5v6wIDAQABAoIB
-AHs4XlLWk8Gd6lTg8m2Lk3l2a1d8p7q5s6r7t8u9v0w1x2y3z4A5B6C7D8E9F0G1
-H2I3J4K5L6M7N8O9P0Q1R2S3T4U5V6W7X8Y9Z0A1B2C3D4E5F6G7H8I9J0K1L2M3
-N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2G3H4I5J6K7L8M9N0O1P2Q3R4S5
-T6U7V8W9X0Y1Z2A3B4C5D6E7F8G9H0I1J2K3L4M5N6O7P8Q9R0S1T2U3V4W5X6Y7
-Z8A9B0C1D2E3F4G5H6I7J8K9L0M1N2O3P4Q5R6S7T8U9V0W1X2Y3Z4A5B6C7D8E9
-QIBAAKCAQEAqQm6eQW0x0Ww3lKk8lZQm0H1Vv0i7c6j6J5lVQYw0M5yH5p3LRhC
-qz8kqZC2w7u5zq5QvOe2f9D3G2a5IhjZf2m8Q4E1Sg9p7x4c1qg8I7G9v3d2VZk0
-C7b7o0E8E2k5ZJYQ1C2iLwJ3v+F7U5QZt7dC8eJfJH5yB4t8z5uU6aV5n+7CH3Z9
-m5m6R8V2m6V6pG0l9h0o3m2k7n5l6m7n8o9p0q1r2s3t4u5v6wIDAQAB
------END RSA PRIVATE KEY-----`;
+// Generate an RSA key pair for development if none is provided.
+// In production, keys should be supplied via environment variables.
+let privateKey: KeyObject;
+let publicKey: KeyObject;
 
-const DEV_RSA_PUBLIC = process.env.JWT_PUBLIC_KEY_PEM || `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqQm6eQW0x0Ww3lKk8lZQ
-m0H1Vv0i7c6j6J5lVQYw0M5yH5p3LRhCqz8kqZC2w7u5zq5QvOe2f9D3G2a5IhjZ
-f2m8Q4E1Sg9p7x4c1qg8I7G9v3d2VZk0C7b7o0E8E2k5ZJYQ1C2iLwJ3v+F7U5QZ
-t7dC8eJfJH5yB4t8z5uU6aV5n+7CH3Z9m5m6R8V2m6V6pG0l9h0o3m2k7n5l6m7n
-8o9p0q1r2s3t4u5v6wIDAQAB
------END PUBLIC KEY-----`;
+if (process.env.JWT_PRIVATE_KEY_PEM && process.env.JWT_PUBLIC_KEY_PEM) {
+  privateKey = createPrivateKey(process.env.JWT_PRIVATE_KEY_PEM);
+  publicKey = createPublicKey(process.env.JWT_PUBLIC_KEY_PEM);
+} else {
+  const pair = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  privateKey = pair.privateKey;
+  publicKey = pair.publicKey;
+}
 
 export function getPrivateKey() {
-  return createPrivateKey(DEV_RSA_PRIVATE);
+  return privateKey;
 }
 
 export function getPublicKey() {
-  return createPublicKey(DEV_RSA_PUBLIC);
+  return publicKey;
 }
 
 export function getJwks() {
+  const jwk = publicKey.export({ format: 'jwk' }) as any;
   return {
     keys: [
       {
-        kty: "RSA",
-        kid: "dev-rsa-1",
-        use: "sig",
-        alg: "RS256",
-        n: "qQm6eQW0x0Ww3lKk8lZQm0H1Vv0i7c6j6J5lVQYw0M5yH5p3LRhCqz8kqZC2w7u5zq5QvOe2f9D3G2a5IhjZf2m8Q4E1Sg9p7x4c1qg8I7G9v3d2VZk0C7b7o0E8E2k5ZJYQ1C2iLwJ3v-F7U5QZt7dC8eJfJH5yB4t8z5uU6aV5n-7CH3Z9m5m6R8V2m6V6pG0l9h0o3m2k7n5l6m7n8o9p0q1r2s3t4u5v6w",
-        e: "AQAB"
-      }
-    ]
+        ...jwk,
+        kid: 'dev-rsa-1',
+        use: 'sig',
+        alg: 'RS256',
+      },
+    ],
   };
 }
+
