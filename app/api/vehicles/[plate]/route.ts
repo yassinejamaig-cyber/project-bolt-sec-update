@@ -1,6 +1,5 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/database';
-import { auditLog } from '@/lib/audit';
 import { rateLimit } from '@/lib/rateLimit';
 
 export async function GET(
@@ -11,9 +10,17 @@ export async function GET(
     const ip = request.headers.get('x-forwarded-for') || 'local';
     const key = `veh:${ip}`;
     const rl = rateLimit(key);
+    
     if (rl.limited) {
-      return Response.json({ error: 'Rate limit exceeded' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } });
+      return NextResponse.json(
+        { error: 'Rate limit exceeded' }, 
+        { 
+          status: 429, 
+          headers: { 'Retry-After': String(rl.retryAfter) } 
+        }
+      );
     }
+
     const plate = params.plate;
     const vehicle = db.getVehicleByPlate(plate);
 
@@ -22,7 +29,7 @@ export async function GET(
       const insurer = db.getInsurerById(vehicle.insurerId);
       const policyStatus = db.getPolicyStatus(vehicle.policyEndDate);
 
-      return Response.json({
+      return NextResponse.json({
         found: true,
         vehicle: {
           plate: vehicle.plate,
@@ -38,13 +45,14 @@ export async function GET(
         insurer
       });
     } else {
-      return Response.json({
+      return NextResponse.json({
         found: false,
         message: 'Vehicle not found'
       });
     }
   } catch (error) {
-    return Response.json(
+    console.error('Vehicle lookup error:', error);
+    return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
