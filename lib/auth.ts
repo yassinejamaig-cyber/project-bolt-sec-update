@@ -2,9 +2,6 @@ import { SignJWT, jwtVerify } from 'jose';
 import { getPrivateKey, getPublicKey } from './keys';
 import { db } from './database';
 
-const privateKey = getPrivateKey();
-const publicKey = getPublicKey();
-
 export interface User {
   id: string;
   username: string;
@@ -37,12 +34,12 @@ export async function createToken(user: User): Promise<string> {
     .setProtectedHeader({ alg: 'RS256', kid: 'dev-rsa-1' })
     .setIssuedAt()
     .setExpirationTime('10m')
-    .sign(privateKey);
+    .sign(getPrivateKey());
 }
 
 export async function verifyToken(token: string): Promise<User | null> {
   try {
-    const { payload } = await jwtVerify(token, publicKey);
+    const { payload } = await jwtVerify(token, getPublicKey());
     return payload.user as User;
   } catch {
     return null;
