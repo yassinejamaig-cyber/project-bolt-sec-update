@@ -1,29 +1,48 @@
 import { createPrivateKey, createPublicKey, generateKeyPairSync, KeyObject } from 'crypto';
 
-// Generate an RSA key pair for development if none is provided.
-// In production, keys should be supplied via environment variables.
-let privateKey: KeyObject;
-let publicKey: KeyObject;
+// Use a shared global object so that keys persist across route bundles in Next.js.
+// This avoids regenerating a new pair for each API route which would invalidate
+// previously issued tokens.
+interface KeyPair {
+  privateKey: KeyObject;
+  publicKey: KeyObject;
+}
 
-if (process.env.JWT_PRIVATE_KEY_PEM && process.env.JWT_PUBLIC_KEY_PEM) {
-  privateKey = createPrivateKey(process.env.JWT_PRIVATE_KEY_PEM);
-  publicKey = createPublicKey(process.env.JWT_PUBLIC_KEY_PEM);
-} else {
-  const pair = generateKeyPairSync('rsa', { modulusLength: 2048 });
-  privateKey = pair.privateKey;
-  publicKey = pair.publicKey;
+const globalForKeys = globalThis as unknown as { __jwtKeys?: KeyPair };
+
+function loadKeys(): KeyPair {
+  // Prefer environment-provided PEM strings so production deployments use
+  // stable keys across restarts.
+  if (process.env.JWT_PRIVATE_KEY_PEM && process.env.JWT_PUBLIC_KEY_PEM) {
+    return {
+      privateKey: createPrivateKey(process.env.JWT_PRIVATE_KEY_PEM),
+      publicKey: createPublicKey(process.env.JWT_PUBLIC_KEY_PEM),
+    };
+  }
+
+  // Fall back to a generated development pair, caching it on the global
+  // object so all route modules share the same keys during a single process
+  // lifetime.
+  if (!globalForKeys.__jwtKeys) {
+    const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+    });
+    globalForKeys.__jwtKeys = { privateKey, publicKey };
+  }
+
+  return globalForKeys.__jwtKeys;
 }
 
 export function getPrivateKey() {
-  return privateKey;
+  return loadKeys().privateKey;
 }
 
 export function getPublicKey() {
-  return publicKey;
+  return loadKeys().publicKey;
 }
 
 export function getJwks() {
-  const jwk = publicKey.export({ format: 'jwk' }) as any;
+  const jwk = getPublicKey().export({ format: 'jwk' }) as any;
   return {
     keys: [
       {
